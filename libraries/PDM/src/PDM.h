@@ -68,7 +68,7 @@ const ap3_pdm_pad_map_elem_t ap3_pdm_clock_map[AP3_PDM_NUM_CLOCK_PADS] = {
     {.pad = 46, .funcsel = AM_HAL_PIN_46_PDMCLK},
 };
 
-uint32_t ap3_pdm_pad_funcsel(ap3_pdm_pad_type_e type, ap3_gpio_pad_t pad, uint8_t *funcsel);
+uint32_t ap3_pdm_pad_funcsel(ap3_pdm_pad_type_e type, ap3_gpio_pad_t pad, uint8_t* funcsel);
 
 const am_hal_pdm_config_t ap3_pdm_config_default = {
     //Basic PDM setup pulled from SDK PDM example
@@ -96,6 +96,7 @@ public:
     //AP3_PDM(uint16_t *userBuffer, uint32_t bufferSize);
 
     bool begin(pin_size_t pinPDMData = MIC_DATA, pin_size_t pinPDMClock = MIC_CLOCK);
+    bool end();
     bool available(void); //Goes true if circular buffer is not empty
     bool isOverrun(void); //Goes true if head crosses tail
 
@@ -115,12 +116,17 @@ public:
 
     bool updateConfig(am_hal_pdm_config_t newConfiguration);
 
-    uint32_t getData(uint16_t *externalBuffer, uint32_t bufferSize);
+    uint32_t getData(int16_t* externalBuffer, uint32_t bufferSize);
 
     void pdm_isr(void);
 
+    unsigned long bufferMS(int sampleRate);
+    unsigned long bufferUsedMS(int sampleRate);
+
+
+
 private:
-    void *_PDMhandle;
+    void* _PDMhandle;
     am_hal_pdm_config_t _PDMconfig;
     pin_size_t _pinPDMData;
     pin_size_t _pinPDMClock;
@@ -138,14 +144,19 @@ private:
     // volatile uint32_t _readHead = 0;
     volatile bool _overrun = false;
 
-#define _pdmBufferSize 4096 //Default is array of 4096 * 32bit
-    volatile uint32_t _pdmDataBuffer[_pdmBufferSize];
-    int16_t *pi16Buffer = (int16_t *)_pdmDataBuffer;
+#define _pdmBufferSize 4000
+#define _pdmExtBufferSize 48000
 
-    volatile int16_t outBuffer1[_pdmBufferSize];
-    volatile int16_t outBuffer2[_pdmBufferSize];
-    volatile int buff1New = false;
-    volatile int buff2New = false;
+    const int _bufferCount = _pdmExtBufferSize / _pdmBufferSize;
+
+    volatile int _readIndex = 0;
+    volatile int _writeIndex = 0;
+
+    volatile int16_t _pdmDataBuffer[_pdmExtBufferSize];
+
+
+    volatile int dataReady = false;
+
 };
 
 #endif //_PDM_H_
